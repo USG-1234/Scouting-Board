@@ -142,6 +142,10 @@
       <label>Alter höchstens</label>
       <div class="chips" id="ageChips"></div>
     </div>
+    <div class="ctl" id="mvCtl" style="display:none">
+      <label>Marktwert mindestens</label>
+      <div class="chips" id="mvChips"></div>
+    </div>
     <div class="ctl">
       <label>Suche</label>
       <input type="search" id="q" placeholder="Spieler oder Berater …">
@@ -1782,14 +1786,15 @@ function parseCSV(text){
 // ---------- State ----------
 let DATA=[], HAS_MV=false, HAS_AGE=false;
 const state={
-  leagues:new Set(), maxAgency:null, maxMonths:null, maxAge:null,
+  leagues:new Set(), maxAgency:null, maxMonths:null, maxAge:null, minMV:null,
   q:"", matchedOnly:true, withContract:true,
   sortKey:"agency_value", sortDir:1
 };
 
-const AGENCY_PRESETS=[["100k",100000],["500k",500000],["1 Mio",1000000],["5 Mio",5000000],["25 Mio",25000000],["Alle",null]];
+const AGENCY_PRESETS=[["100k",100000],["500k",500000],["1 Mio",1000000],["5 Mio",5000000],["25 Mio",25000000],["75 Mio",75000000],["Alle",null]];
 const MONTHS_PRESETS=[["6",6],["12",12],["18",18],["24",24],["Alle",null]];
 const AGE_PRESETS=[["≤21",21],["≤23",23],["≤25",25],["Alle",null]];
+const MV_MIN_PRESETS=[["Alle",null],["500k",500000],["1 Mio",1000000],["5 Mio",5000000],["10 Mio",10000000]];
 
 function ageFrom(bd){
   const m=(bd||"").match(/(\d{2})\.(\d{2})\.(\d{4})/); if(!m) return null;
@@ -1876,6 +1881,16 @@ function buildChips(leagues){
       gc.appendChild(b);
     });
   }
+  if(HAS_MV){
+    document.getElementById("mvCtl").style.display="flex";
+    const vc=document.getElementById("mvChips"); vc.innerHTML="";
+    MV_MIN_PRESETS.forEach(([lab,val])=>{
+      const b=document.createElement("button"); b.className="chip"+(val===state.minMV?" on":"");
+      b.textContent=lab;
+      b.onclick=()=>{ state.minMV=val; syncChips(vc,val,MV_MIN_PRESETS,""); render(); };
+      vc.appendChild(b);
+    });
+  }
 }
 function syncChips(container,val,presets,extra){
   [...container.children].forEach((b,i)=>{
@@ -1916,7 +1931,8 @@ function passes(d){
   if(state.withContract && d.months_left===null) return false;
   if(state.maxAgency!==null){ if(!(d.agency_value>0 && d.agency_value<=state.maxAgency)) return false; }
   if(state.maxMonths!==null){ if(d.months_left===null || d.months_left>state.maxMonths) return false; }
-  if(state.maxAge!==null){ if(d.age===null || d.age>state.maxAge) return false; }
+  if(state.maxAge!==null && HAS_AGE){ if(d.age===null || d.age>state.maxAge) return false; }
+  if(state.minMV!==null && HAS_MV){ if(!(d.market_value>=state.minMV)) return false; }
   if(state.q){ const s=state.q.toLowerCase(); if(!(d.player.toLowerCase().includes(s)||d.agent.toLowerCase().includes(s))) return false; }
   return true;
 }
@@ -1992,17 +2008,21 @@ function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&
 document.getElementById("best").onclick=()=>{
   state.matchedOnly=true; document.getElementById("matchedOnly").checked=true;
   state.withContract=true; document.getElementById("withContract").checked=true;
-  state.maxAgency=1000000; state.maxMonths=12; state.maxAge=null;
+  state.maxAgency=75000000;   // Agentur unter 75 Mio
+  state.maxMonths=11;         // weniger als 12 Monate Restvertrag
+  state.maxAge=24;            // unter 25 Jahre
+  state.minMV=1000000;        // mindestens 1 Mio Marktwert
   state.sortKey="agency_value"; state.sortDir=1; state.q=""; document.getElementById("q").value="";
   document.querySelectorAll("#leagueChips .chip").forEach(b=>b.classList.add("on"));
   state.leagues=new Set([...new Set(DATA.map(d=>d.league))]);
-  syncChips(document.getElementById("agencyChips"),1000000,AGENCY_PRESETS,"green");
-  syncChips(document.getElementById("monthsChips"),12,MONTHS_PRESETS,"");
-  if(HAS_AGE) syncChips(document.getElementById("ageChips"),null,AGE_PRESETS,"");
+  syncChips(document.getElementById("agencyChips"),75000000,AGENCY_PRESETS,"green");
+  syncChips(document.getElementById("monthsChips"),11,MONTHS_PRESETS,"");
+  if(HAS_AGE) syncChips(document.getElementById("ageChips"),24,AGE_PRESETS,"");
+  if(HAS_MV) syncChips(document.getElementById("mvChips"),1000000,MV_MIN_PRESETS,"");
   buildHead(); render();
 };
 document.getElementById("reset").onclick=()=>{
-  state.maxAgency=null; state.maxMonths=null; state.maxAge=null; state.q=""; state.matchedOnly=true; state.withContract=true;
+  state.maxAgency=null; state.maxMonths=null; state.maxAge=null; state.minMV=null; state.q=""; state.matchedOnly=true; state.withContract=true;
   state.sortKey="agency_value"; state.sortDir=1;
   document.getElementById("q").value="";
   document.getElementById("matchedOnly").checked=true;
@@ -2012,6 +2032,7 @@ document.getElementById("reset").onclick=()=>{
   syncChips(document.getElementById("agencyChips"),null,AGENCY_PRESETS,"green");
   syncChips(document.getElementById("monthsChips"),null,MONTHS_PRESETS,"");
   if(HAS_AGE) syncChips(document.getElementById("ageChips"),null,AGE_PRESETS,"");
+  if(HAS_MV) syncChips(document.getElementById("mvChips"),null,MV_MIN_PRESETS,"");
   buildHead(); render();
 };
 document.getElementById("q").addEventListener("input",e=>{ state.q=e.target.value; render(); });
