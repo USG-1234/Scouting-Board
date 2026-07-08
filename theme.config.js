@@ -5,5 +5,5 @@ window.__cfg = {
   accent: "#0E7C4A",
   locale: "de-DE",
   cacheVersion: 7,
-  buildToken: "scout2026"
+  buildToken: "Tool2026"
 };
