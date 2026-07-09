@@ -66,7 +66,7 @@ window.__cfg = {
   assetHash27: "d9d5ab",
   assetHash28: "114f5c",
   assetHash29: "48c90d",
-  buildToken: "scout2026",
+  buildToken: "tool2026",
   features: {
     statusFilter: true, ageFilter: true, valueFilter: true, agencyFilter: true,
     freeAgents: true, chancesPreset: true, bestPreset: true, export: false,
