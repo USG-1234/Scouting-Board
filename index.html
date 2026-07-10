@@ -163,7 +163,6 @@
       <label>Suche</label>
       <input type="search" id="q" placeholder="Spieler oder Berater …">
     </div>
-    <label class="toggle"><input type="checkbox" id="matchedOnly"> Berater ohne Wert ausblenden</label>
     <label class="toggle"><input type="checkbox" id="withContract"> nur mit Vertragsdatum</label>
     <div class="ctl">
       <label>&nbsp;</label>
@@ -2075,7 +2074,7 @@ let DATA=[], HAS_MV=false, HAS_AGE=false, HAS_FREE=false;
 const state={
   leagues:new Set(), maxAgency:null, maxMonths:null, maxAge:null, minMV:null,
   statusFilter:"all", chanceMode:false,
-  q:"", matchedOnly:false, withContract:false,
+  q:"", withContract:false,
   sortKey:"agency_value", sortDir:1
 };
 
@@ -2243,7 +2242,6 @@ function passes(d){
   if(state.statusFilter==="squad" && d.status==="frei") return false;
   if(state.statusFilter==="free" && d.status!=="frei") return false;
   if(state.chanceMode && !isChance(d)) return false;
-  if(state.matchedOnly && cls==="unknown") return false;
   if(state.withContract && d.months_left===null) return false;
   if(state.maxAgency!==null){
     if(cls==="unknown"||cls==="free") return false;
@@ -2350,7 +2348,6 @@ function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&
 // ---------- Presets ----------
 document.getElementById("best").onclick=()=>{
   state.chanceMode=false; state.statusFilter="all";
-  state.matchedOnly=true; document.getElementById("matchedOnly").checked=true;
   state.withContract=true; document.getElementById("withContract").checked=true;
   state.maxAgency=75000000;   // Agentur bis 75 Mio
   state.maxMonths=12;         // Restvertrag bis 12 Monate
@@ -2368,7 +2365,6 @@ document.getElementById("best").onclick=()=>{
 document.getElementById("chance").onclick=()=>{
   // Vertragslose als Chance: bis 22 & >1 Mio  ODER  bis 31 & >4 Mio
   state.chanceMode=true; state.statusFilter="free";
-  state.matchedOnly=false;
   state.withContract=false; document.getElementById("withContract").checked=false;
   state.maxAgency=null; state.maxMonths=null; state.maxAge=null; state.minMV=null;
   state.sortKey="market_value"; state.sortDir=-1; state.q=""; document.getElementById("q").value="";
@@ -2386,10 +2382,9 @@ document.getElementById("chance").onclick=()=>{
 };
 document.getElementById("reset").onclick=()=>{
   state.maxAgency=null; state.maxMonths=null; state.maxAge=null; state.minMV=null; state.q="";
-  state.matchedOnly=false; state.withContract=false; state.statusFilter="all"; state.chanceMode=false;
+  state.withContract=false; state.statusFilter="all"; state.chanceMode=false;
   state.sortKey="agency_value"; state.sortDir=1;
   document.getElementById("q").value="";
-  document.getElementById("matchedOnly").checked=false;
   document.getElementById("withContract").checked=false;
   state.leagues=new Set([...new Set(DATA.map(d=>d.league))]);
   buildChips([...state.leagues]);
@@ -2411,7 +2406,6 @@ document.getElementById("leagueToggle").addEventListener("click",()=>{
   });
   render();
 });
-document.getElementById("matchedOnly").addEventListener("change",e=>{ state.matchedOnly=e.target.checked; render(); });
 document.getElementById("withContract").addEventListener("change",e=>{ state.withContract=e.target.checked; render(); });
 
 // ---------- File intake ----------
@@ -2422,13 +2416,14 @@ file.onchange=e=>{ const f=e.target.files[0]; if(f) f.text().then(ingest); };
 ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault(); drop.classList.remove("hot");}));
 drop.addEventListener("drop",e=>{ const f=e.dataTransfer.files[0]; if(f) f.text().then(ingest); });
 
-// ---------- Auto-Load eingebetteter Daten ----------
-(function(){
+// ---------- Auto-Load eingebetteter Daten (erst nach Entsperren) ----------
+window.__startApp = function(){
   const el=document.getElementById("embedded-csv");
   if(el && el.textContent.trim().length>50){
     try{ ingest(el.textContent); }catch(e){ console.error("Embedded CSV load failed", e); }
   }
-})();
+};
+if(window.__unlocked) window.__startApp();
 </script>
 </body>
 </html>
